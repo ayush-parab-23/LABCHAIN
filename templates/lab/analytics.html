@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% import "_components.html" as ui %}
+
+{% block title %}Laboratory Analytics - LABCHAIN{% endblock %}
+
+{% block content %}
+{% call ui.page_header("Laboratory integrity analytics", "Real-time ledger statistics, verification pass rates, and telemetry tracking") %}
+{% endcall %}
+
+<!-- Security Anomaly Banner -->
+<div class="alert alert-warning" id="anomaly-alert" style="display: none; align-items: center; margin-bottom: 24px;">
+  <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+    <line x1="12" y1="9" x2="12" y2="13"></line>
+    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+  </svg>
+  <div>
+    <strong>High-frequency anomaly:</strong> <span id="anomaly-details">Unusual verification query surge detected.</span>
+  </div>
+</div>
+
+<!-- Dynamic Counter KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Total registered reports</div>
+    <div class="kpi-body">
+      <span class="kpi-value" id="stat-total">-</span>
+    </div>
+    <div class="kpi-delta">Cumulative across all categories</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Active on ledger</div>
+    <div class="kpi-body">
+      <span class="kpi-value" id="stat-active">-</span>
+    </div>
+    <div class="kpi-delta">Eligible for point-of-care verification</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Superseded versions</div>
+    <div class="kpi-body">
+      <span class="kpi-value" id="stat-superseded">-</span>
+    </div>
+    <div class="kpi-delta">Archived corrected releases</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Revoked reports</div>
+    <div class="kpi-body">
+      <span class="kpi-value" id="stat-revoked">-</span>
+    </div>
+    <div class="kpi-delta">Invalidated by laboratory</div>
+  </div>
+</div>
+
+<!-- Verification Ratios Strip -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+  <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-left: 3px solid var(--success);">
+    <div>
+      <div class="kpi-label">Successful verifications</div>
+      <div style="font-size: 1.8rem; font-weight: 500; font-family: var(--font-mono); color: var(--success); margin-top: 4px;" id="stat-verified">-</div>
+    </div>
+    <div class="status-pill status-success">Passed</div>
+  </div>
+
+  <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-left: 3px solid var(--danger);">
+    <div>
+      <div class="kpi-label">Failed / tampered checks</div>
+      <div style="font-size: 1.8rem; font-weight: 500; font-family: var(--font-mono); color: var(--danger); margin-top: 4px;" id="stat-failed">-</div>
+    </div>
+    <div class="status-pill status-danger">Flagged</div>
+  </div>
+</div>
+
+<!-- Visualizations Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px;">
+  <!-- Chart 1: Categories -->
+  <div class="card">
+    <h2 style="font-size: 0.95rem; font-weight: 500; margin-bottom: 4px;">Registered reports by diagnostic category</h2>
+    <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 16px;">Breakdown of medical test classifications.</p>
+    <div style="position: relative; height: 260px; width: 100%;">
+      <canvas id="testTypesChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 2: Ratio -->
+  <div class="card">
+    <h2 style="font-size: 0.95rem; font-weight: 500; margin-bottom: 4px;">Verification outcome ratio</h2>
+    <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 16px;">Proportion of authenticated vs tampered verification queries.</p>
+    <div style="position: relative; height: 260px; width: 100%;">
+      <canvas id="verificationRatioChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 3: Trends -->
+  <div class="card">
+    <h2 style="font-size: 0.95rem; font-weight: 500; margin-bottom: 4px;">Monthly registration trajectory</h2>
+    <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 16px;">Reports anchored to ledger over elapsed calendar months.</p>
+    <div style="position: relative; height: 260px; width: 100%;">
+      <canvas id="monthlyTrendsChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 4: Activity -->
+  <div class="card">
+    <h2 style="font-size: 0.95rem; font-weight: 500; margin-bottom: 4px;">7-Day hospital verification activity</h2>
+    <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 16px;">Daily successful authentications vs flagged tamper attempts.</p>
+    <div style="position: relative; height: 260px; width: 100%;">
+      <canvas id="activityChart"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

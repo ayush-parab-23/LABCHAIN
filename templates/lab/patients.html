@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% import "_components.html" as ui %}
+
+{% block title %}Patient Directory - LABCHAIN{% endblock %}
+
+{% block content %}
+{% call ui.page_header("Patient directory", "Manage patient profiles and their associated anchored diagnostic reports") %}
+  <a href="{{ url_for('lab.create_patient') }}" class="btn btn-primary">Register patient</a>
+{% endcall %}
+
+<!-- Search Filter Bar -->
+<div class="card" style="padding: 16px 20px; margin-bottom: 24px;">
+  <form action="{{ url_for('lab.patients') }}" method="GET" style="display: flex; gap: 10px; align-items: center;">
+    <input class="form-control" type="text" name="search" placeholder="Search by patient name or patient ID..." value="{{ search }}" style="max-width: 440px;">
+    <button type="submit" class="btn btn-secondary">Search</button>
+    {% if search %}
+      <a href="{{ url_for('lab.patients') }}" class="btn btn-secondary">Clear filter</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Patients Ledger Table -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  {% if patients %}
+  <div class="table-wrapper" style="border: none; border-radius: 0;">
+    <table class="ledger-table">
+      <thead>
+        <tr>
+          <th>Patient ID</th>
+          <th>Full name</th>
+          <th>Age</th>
+          <th>Gender</th>
+          <th>Registered date</th>
+          <th>Reports in vault</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in patients %}
+        <tr>
+          <td><code style="font-family: var(--font-mono); font-weight: 500; color: var(--primary);">{{ p.patient_id }}</code></td>
+          <td style="font-weight: 500;">{{ p.name }}</td>
+          <td>{{ p.age }} yrs</td>
+          <td>{{ p.gender }}</td>
+          <td class="text-muted">{{ p.created_at.strftime("%d %b %Y") }}</td>
+          <td>
+            <span class="status-pill status-neutral">
+              {{ p.reports|length }} {{ 'report' if p.reports|length == 1 else 'reports' }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding: 48px 24px;">
+    {{ ui.empty_state("No patient profiles found matching your search.", "Register new patient", url_for('lab.create_patient')) }}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

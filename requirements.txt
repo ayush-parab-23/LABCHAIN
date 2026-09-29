@@ -1,0 +1,11 @@
+Flask==3.0.2
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+web3==7.16.0
+python-dotenv==1.0.1
+qrcode==7.4.2
+Pillow
+werkzeug==3.0.1
+requests==2.34.2
+reportlab==4.1.0
+

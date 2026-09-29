@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% import "_components.html" as ui %}
+
+{% block title %}Confirm Registration - LABCHAIN{% endblock %}
+
+{% block content %}
+{% call ui.page_header("Confirm blockchain registration", "Step 2 of 2: Review cryptographic SHA-256 fingerprint before signing transaction") %}
+  <a href="{{ url_for('lab.dashboard') }}" class="btn btn-secondary">Cancel &amp; discard</a>
+{% endcall %}
+
+<div class="card" style="max-width: 660px; margin: 0 auto; padding: 32px;">
+  <!-- Metadata Summary -->
+  <h2 style="font-size: 1.05rem; font-weight: 500; margin-bottom: 12px;">Report summary</h2>
+
+  <div class="kv-grid" style="margin-bottom: 24px; padding-top: 12px;">
+    <div class="kv-item">
+      <span class="kv-key">Report ID</span>
+      <span class="kv-val"><code style="font-family: var(--font-mono); color: var(--primary);">{{ report.report_id }}</code></span>
+    </div>
+    <div class="kv-item">
+      <span class="kv-key">Patient</span>
+      <span class="kv-val">{{ patient.name }} ({{ patient.patient_id }})</span>
+    </div>
+    <div class="kv-item">
+      <span class="kv-key">Test category</span>
+      <span class="kv-val">{{ report.test_type }}</span>
+    </div>
+    <div class="kv-item">
+      <span class="kv-key">Report date</span>
+      <span class="kv-val">{{ report.report_date.strftime("%d %b %Y") }}</span>
+    </div>
+  </div>
+
+  <!-- SHA-256 Hash Display -->
+  <div style="margin-bottom: 24px; padding: 14px; background-color: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-control);">
+    <span class="kv-key" style="display: block; margin-bottom: 6px;">Generated SHA-256 cryptographic digest</span>
+    {{ ui.hash_chip(report.file_hash, truncate=false) }}
+  </div>
+
+  <!-- Immutable Ledger Warning -->
+  <div class="alert alert-warning" style="margin-bottom: 28px;">
+    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+      <line x1="12" y1="9" x2="12" y2="13"></line>
+      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+    <div>
+      <strong>Immutable operation:</strong> Submitting will sign a transaction and anchor this fingerprint permanently onto the local Ethereum smart contract (<code>LabChain.sol</code>).
+    </div>
+  </div>
+
+  <form class="form-loading-trigger" action="{{ url_for('lab.register_on_blockchain', report_id=report.report_id) }}" method="POST">
+    <div style="display: flex; gap: 10px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--border);">
+      <a href="{{ url_for('lab.dashboard') }}" class="btn btn-secondary">Discard</a>
+      <button type="submit" class="btn btn-primary">
+        Sign transaction &amp; anchor on-chain
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

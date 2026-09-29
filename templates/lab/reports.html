@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% import "_components.html" as ui %}
+
+{% block title %}Issued Reports - LABCHAIN{% endblock %}
+
+{% block content %}
+{% call ui.page_header("Issued medical reports", "Ledger registry of clinical reports anchored to Ethereum blockchain") %}
+  <a href="{{ url_for('lab.create_report') }}" class="btn btn-primary">Issue new report</a>
+{% endcall %}
+
+<div class="card" style="padding: 0; overflow: hidden;">
+  {% if reports %}
+  <div class="table-wrapper" style="border: none; border-radius: 0;">
+    <table class="ledger-table">
+      <thead>
+        <tr>
+          <th>Report ID</th>
+          <th>Patient ID</th>
+          <th>Patient name</th>
+          <th>Test type</th>
+          <th>Version</th>
+          <th>Status</th>
+          <th>Ledger block</th>
+          <th>Registered date</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td>
+            <code style="font-family: var(--font-mono); font-weight: 500; color: var(--primary);">{{ r.report_id }}</code>
+          </td>
+          <td><code style="font-family: var(--font-mono); font-size: 0.8rem;">{{ r.patient.patient_id }}</code></td>
+          <td>{{ r.patient.name }}</td>
+          <td>{{ r.test_type }}</td>
+          <td><span style="font-family: var(--font-mono); font-size: 0.8rem;">v{{ r.version }}</span></td>
+          <td>{{ ui.status_pill(r.status) }}</td>
+          <td>
+            {% if r.block_number %}
+              <code style="font-family: var(--font-mono);">#{{ r.block_number }}</code>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td class="text-muted">{{ r.report_date.strftime("%d %b %Y") }}</td>
+          <td style="text-align: right;">
+            <a href="{{ url_for('lab.report_detail', report_id=r.report_id) }}" class="btn btn-secondary btn-sm">Inspect</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding: 48px 24px;">
+    {{ ui.empty_state("No reports have been registered yet.", "Issue report", url_for('lab.create_report')) }}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% import "_components.html" as ui %}
+
+{% block title %}Patient Medical Vault - LABCHAIN{% endblock %}
+
+{% block content %}
+{% call ui.page_header("Patient medical vault", "Welcome, " ~ (patient.name if patient else current_user.name) ~ " &bull; Cryptographically certified diagnostic records") %}
+{% endcall %}
+
+<!-- Patient Vault KPIs -->
+<div class="kpi-grid">
+  {{ ui.kpi_tile("Reports in vault", reports_count, delta="Associated with your profile") }}
+  <div class="kpi-card">
+    <div class="kpi-label">Latest report status</div>
+    <div class="kpi-body" style="margin-top: 14px;">
+      {{ ui.status_pill(latest_status) }}
+    </div>
+    <div class="kpi-delta">Most recently issued diagnosis</div>
+  </div>
+  {{ ui.kpi_tile("Versions per report", versions_per_report, delta="Average revision depth") }}
+  {{ ui.kpi_tile("Verification checks", qr_scans, delta="Hospital & QR scans recorded") }}
+</div>
+
+<!-- Medical Reports Ledger Table -->
+<div class="card" style="padding: 0; overflow: hidden; margin-bottom: 32px;">
+  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+    <h2 style="font-size: 1rem; font-weight: 500;">Registered diagnostic reports</h2>
+    <p class="text-muted" style="font-size: 0.8rem; margin-top: 2px;">Authentic records verifiable on the Ethereum blockchain.</p>
+  </div>
+
+  {% if reports %}
+  <div class="table-wrapper" style="border: none; border-radius: 0;">
+    <table class="ledger-table">
+      <thead>
+        <tr>
+          <th>Report ID</th>
+          <th>Test category</th>
+          <th>Issue date</th>
+          <th>Version</th>
+          <th>Ledger status</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td>
+            <a href="{{ url_for('patient.report_detail', report_id=r.report_id) }}" style="font-family: var(--font-mono); font-weight: 500; color: var(--primary);">
+              {{ r.report_id }}
+            </a>
+          </td>
+          <td>{{ r.test_type }}</td>
+          <td class="text-muted">{{ r.report_date.strftime("%d %b %Y") }}</td>
+          <td><span style="font-family: var(--font-mono); font-size: 0.8rem;">v{{ r.version }}</span></td>
+          <td>{{ ui.status_pill(r.status) }}</td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 6px;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="showQrModal('{{ r.report_id }}', '{{ qr_map.get(r.report_id, '') }}')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                Show QR
+              </button>
+              <a href="{{ url_for('patient.download_report', report_id=r.report_id) }}" class="btn btn-primary btn-sm">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download PDF
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding: 48px 24px;">
+    {{ ui.empty_state("No diagnostic reports have been registered under your profile yet.") }}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Clean Bordered QR Modal (Accessible popup) -->
+<div id="qr-modal" style="display: none; position: fixed; inset: 0; z-index: 100; background-color: rgba(12, 21, 22, 0.6); align-items: center; justify-content: center; padding: 20px;">
+  <div class="card" style="max-width: 360px; width: 100%; text-align: center; padding: 28px; position: relative;">
+    <button type="button" onclick="closeQrModal()" style="position: absolute; top: 14px; right: 14px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 4px;" aria-label="Close QR popup">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    
+    <h3 style="font-size: 1rem; font-weight: 500; margin-bottom: 2px;">Verification QR code</h3>
+    <p class="text-muted" style="font-size: 0.78rem; margin-bottom: 14px;">Present to your physician or hospital for verification.</p>
+    
+    <div style="background-color: #FFFFFF; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-control); display: inline-block; margin-bottom: 14px;">
+      <img id="qr-modal-img" src="" alt="Report QR code" style="width: 170px; height: 170px; display: block;">
+    </div>
+
+    <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text); font-weight: 500; margin-bottom: 18px;" id="qr-modal-id">
+      LAB-2026-0001
+    </div>
+
+    <button type="button" class="btn btn-secondary btn-sm" style="width: 100%;" onclick="closeQrModal()">Close</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function showQrModal(reportId, qrBase64) {
+    document.getElementById('qr-modal-id').innerText = reportId;
+    document.getElementById('qr-modal-img').src = 'data:image/png;base64,' + qrBase64;
+    document.getElementById('qr-modal').style.display = 'flex';
+  }
+  function closeQrModal() {
+    document.getElementById('qr-modal').style.display = 'none';
+  }
+  // Close on outside click
+  document.getElementById('qr-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'qr-modal') closeQrModal();
+  });
+</script>
+{% endblock %}

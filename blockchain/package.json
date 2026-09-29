@@ -1,0 +1,15 @@
+{
+  "name": "labchain-blockchain",
+  "version": "1.0.0",
+  "description": "Hardhat local blockchain configuration for LABCHAIN",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "node": "npx hardhat node",
+    "deploy": "npx hardhat run scripts/deploy.js --network localhost"
+  },
+  "dependencies": {
+    "hardhat": "^2.22.2",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "ethers": "^6.11.1"
+  }
+}

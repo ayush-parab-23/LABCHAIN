@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% import "_components.html" as ui %}
+
+{% block title %}Verification Portal - LABCHAIN{% endblock %}
+
+{% block content %}
+{% call ui.page_header("Hospital verification portal", "Point-of-care cryptographic integrity validation against the Ethereum blockchain") %}
+{% endcall %}
+
+<!-- Hospital KPIs -->
+<div class="kpi-grid">
+  {{ ui.kpi_tile("Verifications today", verifications_today, delta="Point-of-care queries logged") }}
+  {{ ui.kpi_tile("Tamper flags caught", tamper_flags, delta="Documents altered post-release") }}
+  {{ ui.kpi_tile("Avg verification time", avg_verification_time, delta="Hash computation & RPC query") }}
+  {{ ui.kpi_tile("Pass rate", pass_rate ~ "%", delta="Authenticity verification success") }}
+</div>
+
+<!-- Main Verification Card with 3-Mode Segmented Control -->
+<div class="card" style="max-width: 680px; margin: 0 auto 36px; padding: 32px;">
+  <div class="segmented-wrapper">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h2 style="font-size: 1.15rem; font-weight: 500; margin-bottom: 6px;">Select verification input mode</h2>
+      <p class="text-muted" style="font-size: 0.85rem;">Validate clinical diagnostic reports against on-chain hash registers.</p>
+    </div>
+
+    <!-- Segmented Control Tabs -->
+    <div style="display: flex; justify-content: center;">
+      <div class="segmented-control" role="tablist">
+        <button type="button" class="segmented-btn active" data-target="mode-pdf" role="tab" aria-selected="true">
+          PDF file upload
+        </button>
+        <button type="button" class="segmented-btn" data-target="mode-id" role="tab" aria-selected="false">
+          Report ID lookup
+        </button>
+        <button type="button" class="segmented-btn" data-target="mode-qr" role="tab" aria-selected="false">
+          QR code scan
+        </button>
+      </div>
+    </div>
+
+    <!-- Mode 1: PDF Upload Form -->
+    <div class="tab-pane active" id="mode-pdf">
+      <form class="form-loading-trigger" action="{{ url_for('hospital.verify_report') }}" method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+          <label class="form-label" for="report_id_pdf">Report ID (optional)</label>
+          <input class="form-control" type="text" id="report_id_pdf" name="report_id" placeholder="e.g. LAB-2026-0001 (or leave blank for auto-hash lookup)">
+          <span class="form-hint">Providing the Report ID verifies both specific document identity and file hash.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Clinical PDF document</label>
+          <div class="upload-drag-zone" id="drag-zone" data-input-id="report_file">
+            <svg class="drag-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <div class="drag-zone-text">
+              Drag &amp; drop PDF report here, or <span style="color: var(--primary); text-decoration: underline;">browse files</span>
+            </div>
+            <div class="drag-zone-hint">Accepted format: PDF document up to 5MB</div>
+          </div>
+          <input type="file" id="report_file" name="report_file" accept=".pdf" style="display: none;" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+          Verify report integrity
+        </button>
+      </form>
+    </div>
+
+    <!-- Mode 2: Report ID Only Lookup -->
+    <div class="tab-pane" id="mode-id">
+      <form class="form-loading-trigger" action="{{ url_for('hospital.verify_report') }}" method="POST">
+        <div class="form-group">
+          <label class="form-label" for="report_id_only">Report ID</label>
+          <input class="form-control" type="text" id="report_id_only" name="report_id" placeholder="e.g. LAB-2026-0001" required>
+          <span class="form-hint">Checks current active version, issuance status, and blockchain anchor directly from ledger.</span>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+          Lookup report on ledger
+        </button>
+      </form>
+    </div>
+
+    <!-- Mode 3: QR Code Scan -->
+    <div class="tab-pane" id="mode-qr">
+      <form class="form-loading-trigger" action="{{ url_for('hospital.verify_report') }}" method="POST">
+        <div class="form-group">
+          <label class="form-label" for="report_id_qr">Report identifier from QR code</label>
+          <input class="form-control" type="text" id="report_id_qr" name="report_id" placeholder="e.g. LAB-2026-0001" required>
+          <span class="form-hint">Scan with handheld barcode scanner or enter the decoded report identifier.</span>
+        </div>
+
+        <div style="padding: 14px; background-color: var(--surface-2); border-radius: var(--radius-control); font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+          Patients can also present their report QR code directly to any camera-enabled smartphone to open the authenticated verification certificate automatically.
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          Verify QR certificate
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Sample Testing Kit Card (Authentic vs Tampered) -->
+<div class="card" style="margin-bottom: 24px; padding: 20px;">
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+    <div>
+      <h2 style="font-size: 1rem; font-weight: 500; margin: 0 0 4px 0;">Sample test reports &amp; tampering controls</h2>
+      <p class="text-muted" style="font-size: 0.8125rem; margin: 0;">Download verified authentic PDFs or intentionally tampered diagnostic files to evaluate the cryptographic detection engine.</p>
+    </div>
+    <span class="status-pill status-neutral"><span class="status-dot"></span>Verification test kit</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+    <!-- Authentic Reports Column -->
+    <div style="padding: 14px 16px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-control);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-size: 0.8125rem; font-weight: 500; color: var(--success); display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Authentic reports (on-chain verified)
+        </span>
+      </div>
+      <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+        <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.05);">
+          <div>
+            <strong>Ayush</strong> &bull; <code style="font-family: var(--font-mono); color: var(--primary);">LAB-2026-0001</code>
+            <div class="text-muted" style="font-size: 0.75rem;">Lipid Profile (Original 185 mg/dL)</div>
+          </div>
+          <a href="{{ url_for('download_file', filename='Ayush_report.pdf') }}" class="btn btn-secondary btn-sm" download>
+            Download PDF
+          </a>
+        </li>
+        <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; padding: 6px 0;">
+          <div>
+            <strong>Piyush</strong> &bull; <code style="font-family: var(--font-mono); color: var(--primary);">LAB-2026-0003</code>
+            <div class="text-muted" style="font-size: 0.75rem;">Liver Function (Original 0.8 mg/dL)</div>
+          </div>
+          <a href="{{ url_for('download_file', filename='Piyush_report.pdf') }}" class="btn btn-secondary btn-sm" download>
+            Download PDF
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Tampered Reports Column -->
+    <div style="padding: 14px 16px; background: var(--danger-bg); border: 1px solid var(--border); border-radius: var(--radius-control);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-size: 0.8125rem; font-weight: 500; color: var(--danger-text); display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          Tampered reports (triggers HASH_MISMATCH)
+        </span>
+      </div>
+      <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+        <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.05);">
+          <div>
+            <strong>Ayush (Tampered)</strong> &bull; <code style="font-family: var(--font-mono); color: var(--danger-text);">LAB-2026-0001</code>
+            <div style="font-size: 0.75rem; color: var(--danger-text);">Cholesterol forged: 385 mg/dL (HIGH)</div>
+          </div>
+          <a href="{{ url_for('download_file', filename='Ayush_temp.pdf') }}" class="btn btn-secondary btn-sm" download style="color: var(--danger-text); border-color: var(--danger-text);">
+            Download Tampered
+          </a>
+        </li>
+        <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; padding: 6px 0;">
+          <div>
+            <strong>Piyush (Tampered)</strong> &bull; <code style="font-family: var(--font-mono); color: var(--danger-text);">LAB-2026-0003</code>
+            <div style="font-size: 0.75rem; color: var(--danger-text);">Bilirubin forged: 4.8 mg/dL (HIGH)</div>
+          </div>
+          <a href="{{ url_for('download_file', filename='Piyush_temp.pdf') }}" class="btn btn-secondary btn-sm" download style="color: var(--danger-text); border-color: var(--danger-text);">
+            Download Tampered
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Verifications Feed -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+    <h2 style="font-size: 1rem; font-weight: 500;">Recent verifications feed</h2>
+    <p class="text-muted" style="font-size: 0.8rem; margin-top: 2px;">Live stream of report authenticity checks recorded on this node.</p>
+  </div>
+
+  {% if recent_verifications %}
+  <div class="table-wrapper" style="border: none; border-radius: 0;">
+    <table class="ledger-table">
+      <thead>
+        <tr>
+          <th>Timestamp (UTC)</th>
+          <th>Result</th>
+          <th>Associated report</th>
+          <th>Verification method</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in recent_verifications %}
+        <tr>
+          <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);">
+            {{ log.timestamp.strftime("%d %b %Y, %H:%M:%S") }}
+          </td>
+          <td>
+            {% if log.action == 'REPORT_VERIFIED' %}
+              <span class="status-pill status-success"><span class="status-dot"></span>Verified</span>
+            {% else %}
+              <span class="status-pill status-danger"><span class="status-dot"></span>Tampered</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if log.report %}
+              <code style="font-family: var(--font-mono); font-weight: 500;">{{ log.report.report_id }}</code>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td class="text-muted" style="font-size: 0.85rem;">{{ log.details }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding: 32px 20px;">
+    {{ ui.empty_state("No point-of-care verification checks have been conducted yet today.") }}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/verification.js') }}"></script>
+{% endblock %}

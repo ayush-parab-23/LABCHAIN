@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% import "_components.html" as ui %}
+
+{% block title %}Issue Correction - LABCHAIN{% endblock %}
+
+{% block content %}
+{% call ui.page_header("Issue corrected report version", "Report ID: " ~ report.report_id ~ " &bull; Active version: v" ~ report.version) %}
+  <a href="{{ url_for('lab.report_detail', report_id=report.report_id) }}" class="btn btn-secondary">Cancel</a>
+{% endcall %}
+
+<div class="card" style="max-width: 650px; margin: 0 auto; padding: 32px;">
+  <!-- Version Control Notice -->
+  <div class="alert alert-warning" style="margin-bottom: 24px;">
+    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <div>
+      <strong>Version lifecycle transition:</strong> Uploading a corrected PDF will register version <strong>v{{ report.version + 1 }}</strong> as <code>ACTIVE</code>. Current version (v{{ report.version }}) will transition on-chain to <code>SUPERSEDED</code> status.
+    </div>
+  </div>
+
+  <div class="kv-grid" style="margin-bottom: 24px; padding-top: 0; border-top: none;">
+    <div class="kv-item">
+      <span class="kv-key">Patient</span>
+      <span class="kv-val">{{ patient.name }}</span>
+    </div>
+    <div class="kv-item">
+      <span class="kv-key">Test type</span>
+      <span class="kv-val">{{ report.test_type }}</span>
+    </div>
+    <div class="kv-item" style="grid-column: span 2;">
+      <span class="kv-key">Active hash (v{{ report.version }})</span>
+      <span class="kv-val">{{ ui.hash_chip(report.file_hash, truncate=false) }}</span>
+    </div>
+  </div>
+
+  <form class="form-loading-trigger" action="{{ url_for('lab.correct_report', report_id=report.report_id) }}" method="POST" enctype="multipart/form-data">
+    <div class="form-group">
+      <label class="form-label">Upload corrected clinical report (PDF)</label>
+      <div class="upload-drag-zone" id="drag-zone" data-input-id="report_file">
+        <svg class="drag-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <div class="drag-zone-text">
+          Drag &amp; drop corrected PDF here, or <span style="color: var(--primary); text-decoration: underline;">browse files</span>
+        </div>
+        <div class="drag-zone-hint">Must be different from v{{ report.version }} hash (maximum size 5MB)</div>
+      </div>
+      <input type="file" id="report_file" name="report_file" accept=".pdf" style="display: none;" required>
+    </div>
+
+    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border);">
+      <a href="{{ url_for('lab.report_detail', report_id=report.report_id) }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        Sign &amp; anchor version {{ report.version + 1 }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/verification.js') }}"></script>
+{% endblock %}

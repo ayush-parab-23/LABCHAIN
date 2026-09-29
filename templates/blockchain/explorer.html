@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% import "_components.html" as c %}
+
+{% block title %}Blockchain Explorer - LABCHAIN{% endblock %}
+
+{% block content %}
+{{ c.page_header(
+  'Blockchain explorer',
+  'Inspect cryptographic blocks, transaction receipts, and smart contract anchoring logs on the Ethereum network.'
+) }}
+
+<!-- Explorer KPIs -->
+<div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
+  {{ c.kpi_tile('Latest block', '#' ~ current_block if blockchain_connected else 'Offline', delta='Chain active' if blockchain_connected else 'Unreachable') }}
+  {{ c.kpi_tile('Total transactions', transactions|length, delta='Mined on-chain') }}
+  {{ c.kpi_tile('Gas used (est.)', gas_used_total, unit='units') }}
+  
+  <div class="kpi-card">
+    <div class="kpi-label">Contract address</div>
+    <div class="kpi-body" style="margin-top: 6px;">
+      {{ c.hash_chip(contract_address, copyable=True, truncate=True) }}
+    </div>
+    <div class="kpi-delta">ERC-standard anchor</div>
+  </div>
+
+  {{ c.kpi_tile('Anchors per day', transactions|length, sparkline=sparkline_points, delta='7-day velocity') }}
+</div>
+
+<!-- Ledger View Section -->
+<div class="card" style="padding: 20px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+    <div>
+      <h2 style="font-size: 1.05rem; font-weight: 500; margin: 0 0 2px 0;">Transaction ledger</h2>
+      <p style="margin: 0; font-size: 0.8125rem; color: var(--text-muted);">Dense ledger records of all immutable state changes committed to the Ethereum contract.</p>
+    </div>
+    
+    <!-- Filter controls -->
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <div style="position: relative;">
+        <input 
+          type="text" 
+          id="explorer-search" 
+          placeholder="Filter by report, block, hash..." 
+          style="padding: 6px 12px; font-size: 0.8125rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); min-width: 240px;"
+          aria-label="Filter ledger records"
+        >
+      </div>
+      <select 
+        id="explorer-type-filter" 
+        style="padding: 6px 10px; font-size: 0.8125rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text);"
+        aria-label="Filter by transaction type"
+      >
+        <option value="all">All event types</option>
+        <option value="register">Registration / Update</option>
+        <option value="supersede">Superseded version</option>
+      </select>
+    </div>
+  </div>
+
+  {% if transactions %}
+  <div class="data-table-wrap">
+    <table class="data-table" id="explorer-ledger-table">
+      <thead>
+        <tr>
+          <th style="width: 130px;">Event type</th>
+          <th>Report ID</th>
+          <th style="width: 90px;">Block</th>
+          <th>Document SHA-256</th>
+          <th>Mined date</th>
+          <th>Tx hash</th>
+          <th style="text-align: right; width: 80px;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+        {% set is_reg = (tx.type == 'Report Registration / Update') %}
+        <tr class="ledger-row" data-search="{{ tx.report_id }} {{ tx.block_number }} {{ tx.hash }} {{ tx.tx_hash }}" data-type="{{ 'register' if is_reg else 'supersede' }}">
+          <td>
+            {% if is_reg %}
+              <span class="status-pill status-success" style="font-size: 0.6875rem;"><span class="status-dot"></span>Anchor</span>
+            {% else %}
+              <span class="status-pill status-warn" style="font-size: 0.6875rem;"><span class="status-dot"></span>Supersede</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('lab.report_detail', report_id=tx.report_id) if current_user.role == 'LAB' else url_for('hospital.dashboard') }}" style="font-family: var(--font-mono); font-weight: 500; color: var(--primary);">
+              {{ tx.report_id }}
+            </a>
+          </td>
+          <td>
+            {% if tx.block_number %}
+              <a href="{{ url_for('blockchain.block_detail', block_number=tx.block_number) }}" style="font-family: var(--font-mono); font-weight: 500; color: var(--primary); text-decoration: underline;">
+                #{{ tx.block_number }}
+              </a>
+            {% else %}
+              <span style="color: var(--text-muted); font-family: var(--font-mono);">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {{ c.hash_chip(tx.hash, copyable=True, truncate=True) }}
+          </td>
+          <td style="font-family: var(--font-mono); font-size: 0.8125rem; color: var(--text-muted);">
+            {{ tx.timestamp.strftime('%d %b %Y, %H:%M') if tx.timestamp else '-' }}
+          </td>
+          <td>
+            {{ c.hash_chip(tx.tx_hash, copyable=True, truncate=True) }}
+          </td>
+          <td style="text-align: right;">
+            <a href="{{ url_for('blockchain.transaction_detail', tx_hash=tx.tx_hash) }}" class="btn btn-ghost" style="padding: 3px 8px; font-size: 0.75rem;">
+              Receipt
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {{ c.empty_state(
+      'No on-chain transactions have been recorded on the network yet.',
+      'Issue first report' if current_user.role == 'LAB' else None,
+      url_for('lab.create_report') if current_user.role == 'LAB' else None
+    ) }}
+  {% endif %}
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('explorer-search');
+    const typeSelect = document.getElementById('explorer-type-filter');
+    const rows = document.querySelectorAll('.ledger-row');
+
+    function filterRows() {
+      const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+      const typeFilter = typeSelect ? typeSelect.value : 'all';
+
+      rows.forEach(row => {
+        const rowSearch = (row.getAttribute('data-search') || '').toLowerCase();
+        const rowType = row.getAttribute('data-type') || '';
+
+        const matchesQuery = !query || rowSearch.includes(query);
+        const matchesType = (typeFilter === 'all') || (rowType === typeFilter);
+
+        row.style.display = (matchesQuery && matchesType) ? '' : 'none';
+      });
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterRows);
+    if (typeSelect) typeSelect.addEventListener('change', filterRows);
+  });
+</script>
+{% endblock %}

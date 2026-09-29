@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}LABCHAIN - Medical Report Integrity & Verification{% endblock %}</title>
+  
+  <!-- Zero-FOUC Theme Initialization -->
+  <script>
+    (function() {
+      try {
+        const saved = localStorage.getItem('labchain-theme');
+        const pref = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', saved || pref);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+
+  <!-- Google Fonts: IBM Plex Sans & IBM Plex Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Core Design Tokens & Styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+  <!-- Chart.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <!-- Slim Top Navigation -->
+  {% if not is_public %}
+  <header class="site-header">
+    <div class="container header-inner">
+      <!-- Brand Logo -->
+      <a href="/" class="brand-link" aria-label="LABCHAIN home">
+        <svg class="brand-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+        <span class="brand-name">LABCHAIN</span>
+        <span class="brand-sub">Ledger</span>
+      </a>
+
+      <!-- Navigation Links -->
+      <nav aria-label="Main Navigation">
+        <ul class="nav-links">
+          {% if current_user.is_authenticated %}
+            {% if current_user.role == 'LAB' %}
+              <li class="nav-item {% if request.endpoint == 'lab.dashboard' %}active{% endif %}">
+                <a href="{{ url_for('lab.dashboard') }}">Dashboard</a>
+              </li>
+              <li class="nav-item {% if request.endpoint == 'lab.patients' or request.endpoint == 'lab.create_patient' %}active{% endif %}">
+                <a href="{{ url_for('lab.patients') }}">Patients</a>
+              </li>
+              <li class="nav-item {% if request.endpoint == 'lab.reports' or request.endpoint == 'lab.create_report' or request.endpoint == 'lab.confirm_report' %}active{% endif %}">
+                <a href="{{ url_for('lab.reports') }}">Issued reports</a>
+              </li>
+              <li class="nav-item {% if request.endpoint == 'lab.audit_logs' %}active{% endif %}">
+                <a href="{{ url_for('lab.audit_logs') }}">Audit logs</a>
+              </li>
+              <li class="nav-item {% if request.endpoint == 'lab.analytics' %}active{% endif %}">
+                <a href="{{ url_for('lab.analytics') }}">Analytics</a>
+              </li>
+            {% elif current_user.role == 'PATIENT' %}
+              <li class="nav-item {% if request.endpoint == 'patient.dashboard' or request.endpoint == 'patient.report_detail' %}active{% endif %}">
+                <a href="{{ url_for('patient.dashboard') }}">My vault</a>
+              </li>
+            {% elif current_user.role == 'HOSPITAL' %}
+              <li class="nav-item {% if request.endpoint == 'hospital.dashboard' %}active{% endif %}">
+                <a href="{{ url_for('hospital.dashboard') }}">Verify portal</a>
+              </li>
+            {% endif %}
+            <li class="nav-item {% if 'blockchain' in (request.endpoint or '') %}active{% endif %}">
+              <a href="{{ url_for('blockchain.explorer') }}">Ledger explorer</a>
+            </li>
+          {% else %}
+            <li class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+              <a href="/">Home</a>
+            </li>
+            <li class="nav-item">
+              <a href="/#how-it-works">How it works</a>
+            </li>
+            <li class="nav-item">
+              <a href="/#security">Security</a>
+            </li>
+            <li class="nav-item {% if 'blockchain' in (request.endpoint or '') %}active{% endif %}">
+              <a href="{{ url_for('blockchain.explorer') }}">Explorer</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+
+      <!-- Header Actions: Theme Toggle & User Auth -->
+      <div class="header-actions">
+        <!-- Sun/Moon Theme Toggle with Inline SVGs -->
+        <button type="button" class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">
+          <!-- Moon Icon (shown in light mode) -->
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <!-- Sun Icon (shown in dark mode) -->
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+
+        {% if current_user.is_authenticated %}
+          <div class="user-identity">
+            <span>{{ current_user.name }}</span>
+            <span class="user-role-badge">{{ current_user.role }}</span>
+          </div>
+          <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary btn-sm">Logout</a>
+        {% else %}
+          <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-sm">Sign in</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+  {% endif %}
+
+  <!-- Flash Messages -->
+  <div class="container" style="padding-top: 20px;">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category if category != 'message' else 'info' }}" role="alert">
+            <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              {% if category == 'success' %}
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              {% elif category == 'danger' %}
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              {% else %}
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              {% endif %}
+            </svg>
+            <div>{{ message }}</div>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="app-main">
+    <div class="container">
+      {% block content %}{% endblock %}
+      {% block landing_content %}{% endblock %}
+    </div>
+  </main>
+
+  <!-- Slim Healthcare Ledger Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-top">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span style="font-weight: 500; color: var(--text);">LABCHAIN</span>
+          <span>&copy; 2026. Decentralized Medical Report Verification Network.</span>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 0.75rem;">
+          EVM SHA-256 Ledger
+        </div>
+      </div>
+      <p class="footer-disclaimer">
+        <strong>Notice:</strong> LABCHAIN is a medical document integrity certification ledger. It cryptographically certifies that an electronic report is identical to the document registered by the issuing laboratory and has not been altered post-release. It does not perform clinical diagnosis or medical validity evaluation.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Core JavaScript -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

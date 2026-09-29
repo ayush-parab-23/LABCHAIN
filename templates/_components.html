@@ -1,0 +1,189 @@
+{# Reusable UI Macros for LABCHAIN (Clinical Teal Design System) #}
+
+{# 1. KPI Tile #}
+{% macro kpi_tile(label, value, delta=None, sparkline=None, unit=None) %}
+<div class="kpi-card">
+  <div class="kpi-label">{{ label }}</div>
+  <div class="kpi-body">
+    <div class="kpi-value-wrap">
+      <span class="kpi-value">{{ value|safe }}</span>
+      {% if unit %}<span class="kpi-unit">{{ unit }}</span>{% endif %}
+    </div>
+    {% if sparkline %}
+    <div class="kpi-sparkline" aria-hidden="true">
+      <svg viewBox="0 0 80 24" class="sparkline-svg">
+        <polyline fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" points="{{ sparkline }}" />
+      </svg>
+    </div>
+    {% endif %}
+  </div>
+  {% if delta %}
+  <div class="kpi-delta">{{ delta }}</div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# 2. Status Pill #}
+{% macro status_pill(status) %}
+{% set st = (status or '')|upper %}
+{% if st in ['VERIFIED', 'ACTIVE', 'SUCCESS', 'MINED', 'CONNECTED'] %}
+  <span class="status-pill status-success"><span class="status-dot"></span>{{ status|capitalize }}</span>
+{% elif st in ['HASH_MISMATCH', 'TAMPERED', 'BLOCKCHAIN_MISMATCH', 'FAILED', 'DISCONNECTED'] %}
+  <span class="status-pill status-danger"><span class="status-dot"></span>{{ 'Tampered' if st == 'HASH_MISMATCH' or st == 'BLOCKCHAIN_MISMATCH' else status|capitalize }}</span>
+{% elif st in ['SUPERSEDED', 'REVOKED', 'PENDING', 'WARNING'] %}
+  <span class="status-pill status-warn"><span class="status-dot"></span>{{ status|capitalize }}</span>
+{% else %}
+  <span class="status-pill status-neutral"><span class="status-dot"></span>{{ status|capitalize }}</span>
+{% endif %}
+{% endmacro %}
+
+{# 3. Hash Chip (Middle truncated with click-to-copy) #}
+{% macro hash_chip(hash_str, copyable=True, truncate=True) %}
+{% if hash_str %}
+  {% set raw = hash_str|string %}
+  {% if truncate and raw|length > 18 %}
+    {% set display_str = raw[:8] ~ '...' ~ raw[-6:] %}
+  {% else %}
+    {% set display_str = raw %}
+  {% endif %}
+  <span class="hash-chip-wrap">
+    <code class="hash-chip" title="{{ raw }}" data-full-hash="{{ raw }}">{{ display_str }}</code>
+    {% if copyable %}
+    <button type="button" class="hash-copy-btn" data-copy-text="{{ raw }}" aria-label="Copy hash" title="Copy hash">
+      <svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <svg class="copied-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </button>
+    {% endif %}
+  </span>
+{% else %}
+  <span class="text-muted">-</span>
+{% endif %}
+{% endmacro %}
+
+{# 4. Differing Character Hash Diff #}
+{% macro hash_diff(uploaded_hash, onchain_hash) %}
+<div class="hash-diff-panel">
+  <div class="hash-diff-row">
+    <span class="hash-diff-label">Uploaded file SHA-256:</span>
+    <code class="hash-diff-code uploaded">
+      {%- if uploaded_hash and onchain_hash and uploaded_hash|length == onchain_hash|length -%}
+        {%- for i in range(uploaded_hash|length) -%}
+          {%- if uploaded_hash[i] != onchain_hash[i] -%}
+            <mark class="diff-mismatch">{{ uploaded_hash[i] }}</mark>
+          {%- else -%}
+            {{ uploaded_hash[i] }}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- else -%}
+        {{ uploaded_hash or 'None' }}
+      {%- endif -%}
+    </code>
+  </div>
+  <div class="hash-diff-row">
+    <span class="hash-diff-label">On-chain registry SHA-256:</span>
+    <code class="hash-diff-code onchain">{{ onchain_hash or 'None' }}</code>
+  </div>
+</div>
+{% endmacro %}
+
+{# 5. Page Header #}
+{% macro page_header(title, subtitle=None) %}
+<div class="page-header">
+  <div class="page-header-text">
+    <h1 class="page-title">{{ title }}</h1>
+    {% if subtitle %}
+    <p class="page-subtitle">{{ subtitle }}</p>
+    {% endif %}
+  </div>
+  {% if caller %}
+  <div class="page-header-actions">
+    {{ caller() }}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# 6. Empty State #}
+{% macro empty_state(message, action_text=None, action_url=None) %}
+<div class="empty-state">
+  <p class="empty-state-message">{{ message }}</p>
+  {% if action_text and action_url %}
+  <a href="{{ action_url }}" class="btn btn-primary">{{ action_text }}</a>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# 7. Vertical Version Timeline #}
+{% macro version_timeline(versions, current_report) %}
+<div class="timeline-container">
+  {# Current active version #}
+  <div class="timeline-item is-active">
+    <div class="timeline-marker"></div>
+    <div class="timeline-content">
+      <div class="timeline-header">
+        <span class="timeline-version">Version {{ current_report.version }}</span>
+        <span class="timeline-tag">Current active</span>
+        {{ status_pill(current_report.status) }}
+      </div>
+      <div class="timeline-details">
+        <div class="timeline-detail-item">
+          <span class="text-muted">SHA-256:</span>
+          {{ hash_chip(current_report.file_hash, truncate=true) }}
+        </div>
+        {% if current_report.block_number %}
+        <div class="timeline-detail-item">
+          <span class="text-muted">Block:</span>
+          <code>#{{ current_report.block_number }}</code>
+        </div>
+        {% endif %}
+        {% if current_report.blockchain_tx_hash %}
+        <div class="timeline-detail-item">
+          <span class="text-muted">Tx:</span>
+          {{ hash_chip(current_report.blockchain_tx_hash, truncate=true) }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Historical versions #}
+  {% if versions %}
+    {% for v in versions %}
+    {% if v.version != current_report.version %}
+    <div class="timeline-item is-past">
+      <div class="timeline-marker"></div>
+      <div class="timeline-content">
+        <div class="timeline-header">
+          <span class="timeline-version">Version {{ v.version }}</span>
+          {{ status_pill(v.status) }}
+        </div>
+        <div class="timeline-details">
+          <div class="timeline-detail-item">
+            <span class="text-muted">SHA-256:</span>
+            {{ hash_chip(v.file_hash, truncate=true) }}
+          </div>
+          {% if v.block_number %}
+          <div class="timeline-detail-item">
+            <span class="text-muted">Block:</span>
+            <code>#{{ v.block_number }}</code>
+          </div>
+          {% endif %}
+          {% if v.blockchain_tx_hash %}
+          <div class="timeline-detail-item">
+            <span class="text-muted">Tx:</span>
+            {{ hash_chip(v.blockchain_tx_hash, truncate=true) }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  {% endif %}
+</div>
+{% endmacro %}

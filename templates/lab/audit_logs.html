@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "_components.html" as ui %}
+
+{% block title %}System Audit Logs - LABCHAIN{% endblock %}
+
+{% block content %}
+{% call ui.page_header("System audit trail logs", "Immutable event journal tracking all report issuance, version changes, and hospital verifications") %}
+{% endcall %}
+
+<div class="card" style="padding: 0; overflow: hidden;">
+  {% if logs %}
+  <div class="table-wrapper" style="border: none; border-radius: 0;">
+    <table class="ledger-table">
+      <thead>
+        <tr>
+          <th>Timestamp (UTC)</th>
+          <th>Actor ID</th>
+          <th>Action</th>
+          <th>Associated report</th>
+          <th>Event details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);">
+            {{ log.timestamp.strftime("%d %b %Y, %H:%M:%S") }}
+          </td>
+          <td><code style="font-family: var(--font-mono); font-size: 0.8rem;">User #{{ log.user_id }}</code></td>
+          <td>{{ ui.status_pill(log.action) }}</td>
+          <td>
+            {% if log.report %}
+              <a href="{{ url_for('lab.report_detail', report_id=log.report.report_id) }}">
+                <code style="font-family: var(--font-mono); font-weight: 500;">{{ log.report.report_id }}</code>
+              </a>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td class="text-muted" style="font-size: 0.84rem; max-width: 480px; white-space: normal;">
+            {{ log.details }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding: 48px 24px;">
+    {{ ui.empty_state("No system audit events logged yet.") }}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% import "_components.html" as ui %}
+
+{% block title %}Report {{ report.report_id }} - LABCHAIN{% endblock %}
+
+{% block content %}
+<!-- Page Header with Status Pill -->
+<div class="page-header">
+  <div class="page-header-text">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap;">
+      <h1 class="page-title" style="font-family: var(--font-mono);">{{ report.report_id }}</h1>
+      {{ ui.status_pill(report.status) }}
+    </div>
+    <p class="page-subtitle">{{ report.test_type }} &bull; Issued to {{ patient.name }} on {{ report.report_date.strftime("%d %b %Y") }}</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{{ url_for('patient.download_report', report_id=report.report_id) }}" class="btn btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      Download PDF document
+    </a>
+    <a href="{{ url_for('patient.dashboard') }}" class="btn btn-secondary">Back to vault</a>
+  </div>
+</div>
+
+<!-- Two-Column Layout -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start; margin-bottom: 32px;">
+  <!-- Left Column: Metadata & Version Timeline -->
+  <div style="display: flex; flex-direction: column; gap: 24px;">
+    <!-- Metadata Grid -->
+    <div class="card">
+      <h2 style="font-size: 1rem; font-weight: 500; margin-bottom: 14px;">Report specifics</h2>
+
+      <div class="kv-grid" style="padding-top: 0; border-top: none; margin-bottom: 16px;">
+        <div class="kv-item">
+          <span class="kv-key">Diagnostic category</span>
+          <span class="kv-val">{{ report.test_type }}</span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-key">Issue date</span>
+          <span class="kv-val">{{ report.report_date.strftime("%d %b %Y") }}</span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-key">Patient identifier</span>
+          <span class="kv-val"><code style="font-family: var(--font-mono);">{{ patient.patient_id }}</code></span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-key">Active document version</span>
+          <span class="kv-val">Version {{ report.version }}</span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-key">Ledger block number</span>
+          <span class="kv-val">
+            {% if report.block_number %}
+              <code style="font-family: var(--font-mono);">#{{ report.block_number }}</code>
+            {% else %}
+              <span class="text-muted">Not mined</span>
+            {% endif %}
+          </span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-key">Ledger transaction hash</span>
+          <span class="kv-val">
+            {% if report.blockchain_tx_hash %}
+              {{ ui.hash_chip(report.blockchain_tx_hash, truncate=true) }}
+            {% else %}
+              <span class="text-muted">Not registered</span>
+            {% endif %}
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <span class="kv-key" style="display: block; margin-bottom: 6px;">Active SHA-256 fingerprint</span>
+        {{ ui.hash_chip(report.file_hash, truncate=false) }}
+      </div>
+    </div>
+
+    <!-- Vertical Version Timeline -->
+    <div class="card">
+      <h2 style="font-size: 1rem; font-weight: 500; margin-bottom: 4px;">Version history timeline</h2>
+      <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 16px;">Traceability records anchored to the Ethereum smart contract.</p>
+      {{ ui.version_timeline(versions, report) }}
+    </div>
+  </div>
+
+  <!-- Right Column: Verification QR Card -->
+  <div style="display: flex; flex-direction: column; gap: 20px;">
+    <div class="card qr-card">
+      <h2 style="font-size: 0.95rem; font-weight: 500; margin-bottom: 4px;">Point-of-care verification QR</h2>
+      <p class="text-muted" style="font-size: 0.78rem;">Show this QR code to physicians or clinics to certify authenticity.</p>
+
+      <div class="qr-image-wrap">
+        <img src="data:image/png;base64,{{ qr_code }}" alt="Report QR code" class="qr-image">
+      </div>
+
+      <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text); font-weight: 500; margin-bottom: 14px;">
+        {{ report.report_id }}
+      </div>
+
+      <a href="{{ url_for('patient.download_report', report_id=report.report_id) }}" class="btn btn-primary btn-sm" style="width: 100%; margin-bottom: 8px;">
+        Download PDF document
+      </a>
+
+      <a href="{{ url_for('hospital.public_verify', report_id=report.report_id) }}" target="_blank" class="btn btn-secondary btn-sm" style="width: 100%;">
+        Open public verification link
+      </a>
+    </div>
+
+    <div class="card" style="background-color: var(--surface-2); border-color: var(--border);">
+      <h3 style="font-size: 0.85rem; font-weight: 500; margin-bottom: 6px;">Tamper protection</h3>
+      <p class="text-muted" style="font-size: 0.8rem; line-height: 1.5;">
+        This document cannot be altered. If any diagnostic result or number is edited in the PDF, the SHA-256 cryptographic fingerprint will fail point-of-care ledger verification.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
